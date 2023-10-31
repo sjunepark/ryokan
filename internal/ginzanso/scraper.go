@@ -2,12 +2,13 @@ package scraper
 
 import (
 	"fmt"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/go-rod/rod"
 	"strings"
 	"time"
 )
 
-func Scrape() {
+func Scrape(from time.Time, to time.Time) {
 	browser := rod.New().Trace(true).SlowMotion(time.Second).NoDefaultDevice().MustConnect()
 	defer func(browser *rod.Browser) {
 		err := browser.Close()
@@ -112,12 +113,41 @@ func getAvailableMonths(page *rod.Page) ([]time.Time, error) {
 	return months, nil
 }
 
-// availableMonth is the time.Time version of yearMonth, which is the first day of the month
-func shouldStop(availableMonths []time.Time, targetDate time.Time) bool {
+// shouldStop stops when i) all months are after to or ii) all months are found
+// availableMonths is the time.Time version of yearMonth, which is the first day of the month
+func shouldStop(availableMonths []time.Time, to time.Time) bool {
 	for _, availableMonth := range availableMonths {
-		if !availableMonth.After(targetDate) {
+		if !availableMonth.After(to) {
 			return false
 		}
 	}
 	return true
+}
+
+type ScrapeData struct {
+	from           time.Time
+	to             time.Time
+	firstMonth     time.Time
+	lastMonth      time.Time
+	scrapedMonths  mapset.Set[time.Time]
+	availableDates mapset.Set[time.Time]
+}
+
+func newScraper(from time.Time, to time.Time) *ScrapeData {
+	return &ScrapeData{
+		from:           from,
+		to:             to,
+		firstMonth:     time.Date(from.Year(), from.Month(), 1, 0, 0, 0, 0, time.UTC),
+		lastMonth:      time.Date(to.Year(), to.Month(), 1, 0, 0, 0, 0, time.UTC),
+		scrapedMonths:  mapset.NewSet[time.Time](),
+		availableDates: mapset.NewSet[time.Time](),
+	}
+}
+
+func (s *ScrapeData) dateInRange(date time.Time) bool {
+	return (!date.Before(s.from)) && (!date.After(s.to))
+}
+
+func (s *ScrapeData) monthInRange(month time.Time) bool {
+	return (!month.Before(s.firstMonth)) && (!month.After(s.lastMonth))
 }
