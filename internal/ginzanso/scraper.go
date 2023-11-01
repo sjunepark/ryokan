@@ -2,7 +2,6 @@ package scraper
 
 import (
 	"fmt"
-	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/go-rod/rod"
 	"strings"
 	"time"
@@ -122,32 +121,4 @@ func shouldStop(availableMonths []time.Time, to time.Time) bool {
 		}
 	}
 	return true
-}
-
-type ScrapeData struct {
-	from           time.Time
-	to             time.Time
-	firstMonth     time.Time
-	lastMonth      time.Time
-	scrapedMonths  mapset.Set[time.Time]
-	availableDates mapset.Set[time.Time]
-}
-
-func newScraper(from time.Time, to time.Time) *ScrapeData {
-	return &ScrapeData{
-		from:           from,
-		to:             to,
-		firstMonth:     time.Date(from.Year(), from.Month(), 1, 0, 0, 0, 0, time.UTC),
-		lastMonth:      time.Date(to.Year(), to.Month(), 1, 0, 0, 0, 0, time.UTC),
-		scrapedMonths:  mapset.NewSet[time.Time](),
-		availableDates: mapset.NewSet[time.Time](),
-	}
-}
-
-func (s *ScrapeData) dateInRange(date time.Time) bool {
-	return (!date.Before(s.from)) && (!date.After(s.to))
-}
-
-func (s *ScrapeData) monthInRange(month time.Time) bool {
-	return (!month.Before(s.firstMonth)) && (!month.After(s.lastMonth))
 }

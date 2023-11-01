@@ -3,3 +3,6 @@ build:
 
 run: build
 	@./bin/main -rod=show
+
+test:
+	@go test -v ./...
