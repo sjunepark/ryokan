@@ -1,4 +1,4 @@
-package date
+package yearmonth
 
 import (
 	"cloud.google.com/go/civil"

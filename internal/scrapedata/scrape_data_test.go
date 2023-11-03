@@ -2,7 +2,7 @@ package scrapedata
 
 import (
 	"cloud.google.com/go/civil"
-	"github.com/sjunepark/ryokan/internal/date"
+	"github.com/sjunepark/ryokan/internal/yearmonth"
 	"testing"
 	"time"
 )
@@ -11,12 +11,12 @@ func createScrapeData(t testing.TB, from string, to string) *ScrapeData {
 	t.Helper()
 	fromTime, err := time.Parse("2006-01-02", from)
 	if err != nil {
-		t.Fatalf("Error parsing from date: %v", err)
+		t.Fatalf("Error parsing from yearmonth: %v", err)
 	}
 	fromDate := civil.DateOf(fromTime)
 	toTime, err := time.Parse("2006-01-02", to)
 	if err != nil {
-		t.Fatalf("Error parsing to date: %v", err)
+		t.Fatalf("Error parsing to yearmonth: %v", err)
 	}
 	toDate := civil.DateOf(toTime)
 
@@ -42,7 +42,7 @@ func TestIsDateInRange(t *testing.T) {
 
 	for _, tc := range testCases {
 		if result := sd.IsDateInRange(tc.date); result != tc.expected {
-			t.Errorf("Expected %v for date %v, but got %v", tc.expected, tc.date, result)
+			t.Errorf("Expected %v for yearmonth %v, but got %v", tc.expected, tc.date, result)
 		}
 	}
 }
@@ -51,16 +51,16 @@ func TestIsMonthInRange(t *testing.T) {
 	sd := createScrapeData(t, "2022-12-25", "2023-02-28")
 
 	testCases := []struct {
-		yearMonth date.YearMonth
+		yearMonth yearmonth.YearMonth
 		expected  bool
 	}{
-		{date.NewYearMonth(2022, 12), true},
-		{date.NewYearMonth(2023, 1), true},
-		{date.NewYearMonth(2023, 2), true},
-		{date.NewYearMonth(2023, 3), false},
-		{date.NewYearMonth(2023, 4), false},
-		{date.NewYearMonth(2023, 12), false},
-		{date.NewYearMonth(2024, 1), false},
+		{yearmonth.NewYearMonth(2022, 12), true},
+		{yearmonth.NewYearMonth(2023, 1), true},
+		{yearmonth.NewYearMonth(2023, 2), true},
+		{yearmonth.NewYearMonth(2023, 3), false},
+		{yearmonth.NewYearMonth(2023, 4), false},
+		{yearmonth.NewYearMonth(2023, 12), false},
+		{yearmonth.NewYearMonth(2024, 1), false},
 	}
 
 	for _, tc := range testCases {
@@ -76,38 +76,38 @@ func TestAreAllMonthsFuture(t *testing.T) {
 	s := NewScrapeData(civil.DateOf(from), civil.DateOf(to))
 
 	testCases := []struct {
-		yearMonth []date.YearMonth
+		yearMonth []yearmonth.YearMonth
 		expected  bool
 	}{
 		{
-			[]date.YearMonth{
-				date.NewYearMonth(2022, 11),
-				date.NewYearMonth(2022, 12),
-				date.NewYearMonth(2023, 1),
+			[]yearmonth.YearMonth{
+				yearmonth.NewYearMonth(2022, 11),
+				yearmonth.NewYearMonth(2022, 12),
+				yearmonth.NewYearMonth(2023, 1),
 			},
 			false,
 		},
 		{
-			[]date.YearMonth{
-				date.NewYearMonth(2023, 1),
-				date.NewYearMonth(2023, 2),
-				date.NewYearMonth(2023, 3),
+			[]yearmonth.YearMonth{
+				yearmonth.NewYearMonth(2023, 1),
+				yearmonth.NewYearMonth(2023, 2),
+				yearmonth.NewYearMonth(2023, 3),
 			},
 			false,
 		},
 		{
-			[]date.YearMonth{
-				date.NewYearMonth(2023, 3),
-				date.NewYearMonth(2023, 4),
-				date.NewYearMonth(2023, 5),
+			[]yearmonth.YearMonth{
+				yearmonth.NewYearMonth(2023, 3),
+				yearmonth.NewYearMonth(2023, 4),
+				yearmonth.NewYearMonth(2023, 5),
 			},
 			true,
 		},
 		{
-			[]date.YearMonth{
-				date.NewYearMonth(2024, 1),
-				date.NewYearMonth(2024, 2),
-				date.NewYearMonth(2024, 3),
+			[]yearmonth.YearMonth{
+				yearmonth.NewYearMonth(2024, 1),
+				yearmonth.NewYearMonth(2024, 2),
+				yearmonth.NewYearMonth(2024, 3),
 			},
 			true,
 		},
@@ -131,14 +131,14 @@ func TestAreAllMonthsScraped(t *testing.T) {
 	}
 
 	// Scenario 2: Some months scraped
-	s.scrapedYearMonths.Add(date.NewYearMonth(2023, 1))
+	s.scrapedYearMonths.Add(yearmonth.NewYearMonth(2023, 1))
 	if result := s.AreAllMonthsScraped(); result {
 		t.Errorf("Expected false for AreAllMonthsScraped, but got %v", result)
 	}
 
 	// Scenario 3: All months scraped
-	s.scrapedYearMonths.Add(date.NewYearMonth(2023, 2))
-	s.scrapedYearMonths.Add(date.NewYearMonth(2023, 3))
+	s.scrapedYearMonths.Add(yearmonth.NewYearMonth(2023, 2))
+	s.scrapedYearMonths.Add(yearmonth.NewYearMonth(2023, 3))
 
 	if result := s.AreAllMonthsScraped(); !result {
 		t.Errorf("Expected true for AreAllMonthsScraped, but got %v", result)

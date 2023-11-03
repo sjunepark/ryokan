@@ -1,8 +1,10 @@
 package scraper
 
 import (
+	"cloud.google.com/go/civil"
 	"fmt"
 	"github.com/go-rod/rod"
+	"github.com/sjunepark/ryokan/internal/yearmonth"
 	"strings"
 	"time"
 )
@@ -79,44 +81,49 @@ func parseDate(date string) (time.Time, error) {
 	return time.Parse("2006-01-02", date)
 }
 
-func getAvailableMonths(page *rod.Page) ([]time.Time, error) {
-	month0, month0err := page.Elements("#yearMonth_0")
-	month1, month1err := page.Elements("#yearMonth_1")
-	month2, month2err := page.Elements("#yearMonth_2")
+func getAvailableMonths(page *rod.Page) ([]yearmonth.YearMonth, error) {
+	var errors []string
+	var yearMonthElements []*rod.Element
 
-	if month0err != nil && month1err != nil && month2err != nil {
-		var errors []string
-		errors = append(errors, month0err.Error())
-		errors = append(errors, month1err.Error())
-		errors = append(errors, month2err.Error())
-		return nil, fmt.Errorf(strings.Join(errors, "; "))
-	}
-
-	monthElements := append(month0, month1...)
-	monthElements = append(monthElements, month2...)
-
-	var months []time.Time
-	for _, monthElement := range monthElements {
-		monthText, err := monthElement.Text()
+	for i := 0; i < 3; i++ {
+		selector := fmt.Sprintf("#yearMonth_%d", i)
+		yearMonths, err := page.Elements(selector)
 		if err != nil {
-			fmt.Println("Error getting month text:", err)
+			errors = append(errors, err.Error())
 			continue
 		}
-		month, err := time.Parse("Jan 2006", monthText)
+		yearMonthElements = append(yearMonthElements, yearMonths...)
+	}
+
+	if len(yearMonthElements) == 0 {
+		combinedError := fmt.Errorf(strings.Join(errors, "; "))
+		fmt.Println(nil, combinedError)
+		return nil, combinedError
+	}
+
+	var yearMonths []yearmonth.YearMonth
+	for _, yme := range yearMonthElements {
+		yearMonthText, err := yme.Text()
 		if err != nil {
-			fmt.Println("Error parsing month:", err)
+			fmt.Println("Error getting yearMonth text:", err)
 			continue
 		}
-		months = append(months, month)
+		yearMonthTime, err := time.Parse("Jan 2006", yearMonthText)
+		if err != nil {
+			fmt.Println("Error parsing yearMonth:", err)
+			continue
+		}
+		yearMonth := yearmonth.NewYearMonth(yearMonthTime.Year(), yearMonthTime.Month())
+		yearMonths = append(yearMonths, yearMonth)
 	}
-	return months, nil
+	return yearMonths, nil
 }
 
 // shouldStop stops when i) all months are after to or ii) all months are found
 // availableMonths is the time.Time version of yearMonth, which is the first day of the month
-func shouldStop(availableMonths []time.Time, to time.Time) bool {
+func shouldStop(availableMonths []yearmonth.YearMonth, to civil.Date) bool {
 	for _, availableMonth := range availableMonths {
-		if !availableMonth.After(to) {
+		if !availableMonth.After(yearmonth.NewYearMonth(to.Year, to.Month)) {
 			return false
 		}
 	}
