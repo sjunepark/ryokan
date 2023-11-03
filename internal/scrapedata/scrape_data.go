@@ -1,41 +1,42 @@
 package scrapedata
 
 import (
+	"cloud.google.com/go/civil"
 	"github.com/deckarep/golang-set/v2"
-	"time"
+	"github.com/sjunepark/ryokan/internal/date"
 )
 
 type ScrapeData struct {
-	from           time.Time
-	to             time.Time
-	firstMonth     time.Time
-	lastMonth      time.Time
-	scrapedMonths  mapset.Set[time.Time]
-	availableDates mapset.Set[time.Time]
+	from              civil.Date
+	to                civil.Date
+	firstMonth        date.YearMonth
+	lastMonth         date.YearMonth
+	scrapedYearMonths mapset.Set[date.YearMonth]
+	availableDates    mapset.Set[civil.Date]
 }
 
-func NewScrapeData(from time.Time, to time.Time) *ScrapeData {
+func NewScrapeData(from civil.Date, to civil.Date) *ScrapeData {
 	return &ScrapeData{
-		from:           from,
-		to:             to,
-		firstMonth:     time.Date(from.Year(), from.Month(), 1, 0, 0, 0, 0, time.UTC),
-		lastMonth:      time.Date(to.Year(), to.Month(), 1, 0, 0, 0, 0, time.UTC),
-		scrapedMonths:  mapset.NewSet[time.Time](),
-		availableDates: mapset.NewSet[time.Time](),
+		from:              from,
+		to:                to,
+		firstMonth:        date.NewYearMonth(from.Year, from.Month),
+		lastMonth:         date.NewYearMonth(to.Year, to.Month),
+		scrapedYearMonths: mapset.NewSet[date.YearMonth](),
+		availableDates:    mapset.NewSet[civil.Date](),
 	}
 }
 
-func (sd *ScrapeData) IsDateInRange(date time.Time) bool {
+func (sd *ScrapeData) IsDateInRange(date civil.Date) bool {
 	return (!date.Before(sd.from)) && (!date.After(sd.to))
 }
 
-func (sd *ScrapeData) IsMonthInRange(month time.Time) bool {
-	return (!month.Before(sd.firstMonth)) && (!month.After(sd.lastMonth))
+func (sd *ScrapeData) IsYearMonthInRange(yearMonth date.YearMonth) bool {
+	return (!yearMonth.Before(sd.firstMonth)) && (!yearMonth.After(sd.lastMonth))
 }
 
-func (sd *ScrapeData) AreAllMonthsFuture(months []time.Time) bool {
-	for _, month := range months {
-		if !month.After(sd.lastMonth) {
+func (sd *ScrapeData) AreAllMonthsFuture(yearMonths []date.YearMonth) bool {
+	for _, ym := range yearMonths {
+		if !ym.After(sd.lastMonth) {
 			return false
 		}
 	}
@@ -43,13 +44,14 @@ func (sd *ScrapeData) AreAllMonthsFuture(months []time.Time) bool {
 }
 
 func (sd *ScrapeData) AreAllMonthsScraped() bool {
-	currentMonth := sd.firstMonth
+	currentYearMonth := sd.firstMonth
 
-	for currentMonth.Before(sd.lastMonth.AddDate(0, 1, 0)) {
-		if !sd.scrapedMonths.Contains(currentMonth) {
+	for currentYearMonth.Before(sd.lastMonth.AddMonths(1)) {
+		if !sd.scrapedYearMonths.Contains(currentYearMonth) {
 			return false
 		}
-		currentMonth = currentMonth.AddDate(0, 1, 0)
+		currentYearMonth = currentYearMonth.AddMonths(1)
+
 	}
 	return true
 }
