@@ -4,12 +4,13 @@ import (
 	"cloud.google.com/go/civil"
 	"fmt"
 	"github.com/go-rod/rod"
+	"github.com/sjunepark/ryokan/internal/scraper"
 	"github.com/sjunepark/ryokan/internal/yearmonth"
 	"strings"
 	"time"
 )
 
-func Scrape(from time.Time, to time.Time) {
+func Scrape(from civil.Date, to civil.Date) {
 	browser := rod.New().Trace(true).SlowMotion(time.Second).NoDefaultDevice().MustConnect()
 	defer func(browser *rod.Browser) {
 		err := browser.Close()
@@ -19,6 +20,12 @@ func Scrape(from time.Time, to time.Time) {
 	}(browser)
 
 	page := browser.MustPage("https://reserve.489ban.net/client/ginzanso/4/plan/availability/daily?#content").MustWaitLoad().MustWindowFullscreen()
+
+	sd := scraper.NewScraper(from, to)
+
+	for shouldStop(sd.sc, to) {
+
+	}
 
 	availableTriangles, triangleErr := page.Elements(".fa-exclamation-triangle")
 	availableCircles, circleErr := page.Element(".fa-circle-o")

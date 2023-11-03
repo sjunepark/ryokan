@@ -1,13 +1,14 @@
-package scrapedata
+package scraper
 
 import (
 	"cloud.google.com/go/civil"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/sjunepark/ryokan/internal/yearmonth"
 	"testing"
 	"time"
 )
 
-func createScrapeData(t testing.TB, from string, to string) *ScrapeData {
+func createScrapeData(t testing.TB, from string, to string) *ScrapedData {
 	t.Helper()
 	fromTime, err := time.Parse("2006-01-02", from)
 	if err != nil {
@@ -20,7 +21,7 @@ func createScrapeData(t testing.TB, from string, to string) *ScrapeData {
 	}
 	toDate := civil.DateOf(toTime)
 
-	sd := NewScrapeData(fromDate, toDate)
+	sd := NewScraper(fromDate, toDate)
 	return sd
 }
 
@@ -73,7 +74,7 @@ func TestIsMonthInRange(t *testing.T) {
 func TestAreAllMonthsFuture(t *testing.T) {
 	from := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2023, 2, 28, 0, 0, 0, 0, time.UTC)
-	s := NewScrapeData(civil.DateOf(from), civil.DateOf(to))
+	s := NewScraper(civil.DateOf(from), civil.DateOf(to))
 
 	testCases := []struct {
 		yearMonth []yearmonth.YearMonth
@@ -123,7 +124,7 @@ func TestAreAllMonthsFuture(t *testing.T) {
 func TestAreAllMonthsScraped(t *testing.T) {
 	from := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2023, 2, 28, 0, 0, 0, 0, time.UTC)
-	s := NewScrapeData(civil.DateOf(from), civil.DateOf(to))
+	s := NewScraper(civil.DateOf(from), civil.DateOf(to))
 
 	// Scenario 1: No months scraped
 	if result := s.AreAllMonthsScraped(); result {
