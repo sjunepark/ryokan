@@ -30,5 +30,7 @@ func (ym YearMonth) After(other YearMonth) bool {
 }
 
 func (ym YearMonth) AddMonths(months int) YearMonth {
-	return NewYearMonth(ym.year, ym.month+time.Month(months))
+	currentTime := time.Date(ym.year, ym.month, 1, 0, 0, 0, 0, time.UTC)
+	addedTime := currentTime.AddDate(0, months, 0)
+	return NewYearMonth(addedTime.Year(), addedTime.Month())
 }
