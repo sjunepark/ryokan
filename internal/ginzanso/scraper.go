@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func Scrape(from civil.Date, to civil.Date) {
+func Scrape(from civil.Date, to civil.Date) (availableDates []civil.Date, err error) {
 	browser := rod.New().Trace(true).SlowMotion(time.Second).NoDefaultDevice().MustConnect()
 	defer func(browser *rod.Browser) {
 		err := browser.Close()
@@ -18,24 +18,34 @@ func Scrape(from civil.Date, to civil.Date) {
 			panic(err)
 		}
 	}(browser)
-
 	page := browser.MustPage("https://reserve.489ban.net/client/ginzanso/4/plan/availability/daily?#content").MustWaitLoad().MustWindowFullscreen()
 
-	sd := scraper.NewScraper(from, to)
+	s := scraper.NewScraper(from, to, 12)
 
-	for shouldStop(sd.sc, to) {
+	for s.KeepScraping() {
+		availableYearMonths := getAvailableMonths(page)
+		if len(availableYearMonths) == 0 {
+			return []civil.Date{}, fmt.Errorf("no available year months")
+		}
 
+		for _, currentYearMonth := range availableYearMonths {
+			s.AddScrapedYearMoth(currentYearMonth)
+			if !s.ShouldScrapeYearMonth(currentYearMonth) {
+				continue
+			}
+			availableDates = append(availableDates, getAvailableDates(page)...)
+		}
+		// todo: Go to next
 	}
 
-	availableTriangles, triangleErr := page.Elements(".fa-exclamation-triangle")
-	availableCircles, circleErr := page.Element(".fa-circle-o")
-	if triangleErr != nil && circleErr != nil {
-		fmt.Println("No available rooms")
-		return
-	}
-	availableElements := append(availableTriangles, availableCircles)
+	time.Sleep(time.Hour)
+	return availableDates, nil
+}
 
-	var dates []time.Time
+func getAvailableDates(page *rod.Page) []civil.Date {
+	availableElements := getAvailableDateElements(page)
+
+	var dates []civil.Date
 	for _, availableElement := range availableElements {
 		parent, err := getFirstPtagParent(availableElement)
 		if err != nil {
@@ -48,10 +58,20 @@ func Scrape(from civil.Date, to civil.Date) {
 			continue
 		}
 		parentClasses := parseClasses(*parentClassesStr)
+
 		dates = append(dates, getDatesFromClasses(parentClasses)...)
 	}
 
-	time.Sleep(time.Hour)
+	return dates
+}
+
+func getAvailableDateElements(page *rod.Page) []*rod.Element {
+	availableTriangles, triangleErr := page.Elements(".fa-exclamation-triangle")
+	availableCircles, circleErr := page.Element(".fa-circle-o")
+	if triangleErr != nil && circleErr != nil {
+		return []*rod.Element{}
+	}
+	return append(availableTriangles, availableCircles)
 }
 
 func getFirstPtagParent(element *rod.Element) (*rod.Element, error) {
@@ -75,8 +95,8 @@ func parseClasses(classes string) []string {
 	return strings.Fields(classes)
 }
 
-func getDatesFromClasses(classes []string) []time.Time {
-	var dates []time.Time
+func getDatesFromClasses(classes []string) []civil.Date {
+	var dates []civil.Date
 	for _, class := range classes {
 		date, _ := parseDate(class)
 		dates = append(dates, date)
@@ -84,11 +104,15 @@ func getDatesFromClasses(classes []string) []time.Time {
 	return dates
 }
 
-func parseDate(date string) (time.Time, error) {
-	return time.Parse("2006-01-02", date)
+func parseDate(date string) (civil.Date, error) {
+	dateTime, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		return civil.Date{}, err
+	}
+	return civil.DateOf(dateTime), nil
 }
 
-func getAvailableMonths(page *rod.Page) ([]yearmonth.YearMonth, error) {
+func getAvailableMonths(page *rod.Page) []yearmonth.YearMonth {
 	var errors []string
 	var yearMonthElements []*rod.Element
 
@@ -103,12 +127,10 @@ func getAvailableMonths(page *rod.Page) ([]yearmonth.YearMonth, error) {
 	}
 
 	if len(yearMonthElements) == 0 {
-		combinedError := fmt.Errorf(strings.Join(errors, "; "))
-		fmt.Println(nil, combinedError)
-		return nil, combinedError
+		return []yearmonth.YearMonth{}
 	}
 
-	var yearMonths []yearmonth.YearMonth
+	yearMonths := make([]yearmonth.YearMonth, 0, len(yearMonthElements))
 	for _, yme := range yearMonthElements {
 		yearMonthText, err := yme.Text()
 		if err != nil {
@@ -123,16 +145,5 @@ func getAvailableMonths(page *rod.Page) ([]yearmonth.YearMonth, error) {
 		yearMonth := yearmonth.NewYearMonth(yearMonthTime.Year(), yearMonthTime.Month())
 		yearMonths = append(yearMonths, yearMonth)
 	}
-	return yearMonths, nil
-}
-
-// shouldStop stops when i) all months are after to or ii) all months are found
-// availableMonths is the time.Time version of yearMonth, which is the first day of the month
-func shouldStop(availableMonths []yearmonth.YearMonth, to civil.Date) bool {
-	for _, availableMonth := range availableMonths {
-		if !availableMonth.After(yearmonth.NewYearMonth(to.Year, to.Month)) {
-			return false
-		}
-	}
-	return true
+	return yearMonths
 }
