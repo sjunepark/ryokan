@@ -1,8 +1,14 @@
-build:
-	@go build -o bin/main cmd/ginzanso/main.go
+build-ginzanso:
+	@go build -o bin/ginzanso cmd/ginzanso/main.go
 
-run: build
-	@./bin/main -rod="show,slow=1s,trace"
+run-ginzanso: build-ginzanso
+	@./bin/ginzanso -rod="show,slow=1s,trace"
+
+build-gmail:
+	@go build -o bin/gmail cmd/gmail/main.go
+
+run-gmail: build-gmail
+	@./bin/gmail
 
 test:
 	@go test -v ./...
